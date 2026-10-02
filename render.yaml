@@ -1,0 +1,18 @@
+# Deploy entire repo (not Backend-only) on Render free web service.
+services:
+  - type: web
+    name: perplexity
+    runtime: node
+    rootDir: Backend
+    buildCommand: npm install && npm run build:frontend
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
