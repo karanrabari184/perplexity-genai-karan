@@ -1,32 +1,53 @@
 import React, { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { Link } from 'react-router'
 import { useSelector } from 'react-redux'
 import { useChat } from '../hook/useChat'
 import remarkGfm from 'remark-gfm'
+import AuthRequiredModal from '../../auth/components/AuthRequiredModal'
+import { consumePendingChatMessage } from '../../auth/constants/pendingMessage'
 
 const Dashboard = () => {
   const chat = useChat()
 
+  const user = useSelector((state) => state.auth.user)
+  const authLoading = useSelector((state) => state.auth.loading)
   const chats = useSelector((state) => state.chat.chats)
   const currentChatId = useSelector((state) => state.chat.currentChatId)
   const isLoading = useSelector((state) => state.chat.isLoading)
   const error = useSelector((state) => state.chat.error)
 
   const [chatInput, setChatInput] = useState('')
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+
 
   useEffect(() => {
+    const pending = consumePendingChatMessage()
+    if (pending) {
+      setChatInput(pending)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!user) return undefined
+
     const disconnectSocket = chat.connectSocket()
     chat.handleGetChats()
     return () => disconnectSocket?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [user])
 
   const handleSubmitMessage = async (event) => {
     event.preventDefault()
 
     const trimmedMessage = chatInput.trim()
 
-    if (!trimmedMessage || isLoading) {
+    if (!trimmedMessage || isLoading || authLoading) {
+      return
+    }
+
+    if (!user) {
+      setAuthModalOpen(true)
       return
     }
 
@@ -38,8 +59,6 @@ const Dashboard = () => {
         chatId: currentChatId,
       })
     } catch (err) {
-      // handleSendMessage already dispatches setError internally,
-      // this catch just guards against any unexpected rejection here
       console.error('Failed to send message:', err)
     }
   }
@@ -56,9 +75,17 @@ const Dashboard = () => {
   }
 
   const currentChat = currentChatId ? chats[currentChatId] : null
+  const displayName = user?.username || 'Guest'
+  const profileInitial = displayName.charAt(0).toUpperCase()
 
   return (
     <main className='flex h-screen w-full overflow-hidden bg-[#191919] text-white'>
+
+      <AuthRequiredModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        pendingMessage={chatInput}
+      />
 
       {/* SIDEBAR */}
       <aside className='hidden w-[280px] shrink-0 flex-col bg-[#171717] md:flex'>
@@ -144,21 +171,60 @@ const Dashboard = () => {
         </div>
 
         <div className='border-t border-white/[0.06] p-3'>
-          <div className='flex items-center gap-3 rounded-xl px-3 py-2.5'>
-            <div className='flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-semibold text-black'>
-              U
-            </div>
+          {user ? (
+            <Link
+              to='/profile'
+              className='flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.06]'
+            >
+              <div className='flex h-8 w-8 items-center justify-center rounded-full bg-[#31b8c6] text-sm font-semibold text-zinc-950'>
+                {profileInitial}
+              </div>
 
-            <div className='min-w-0'>
-              <p className='truncate text-sm font-medium text-white'>
-                User
-              </p>
+              <div className='min-w-0'>
+                <p className='truncate text-sm font-medium text-white'>
+                  {displayName}
+                </p>
 
-              <p className='text-xs text-white/40'>
-                Personal account
-              </p>
+                <p className='text-xs text-white/40'>
+                  Profile
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className='rounded-xl px-3 py-2.5'>
+              <div className='flex items-center gap-3'>
+                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white/70'>
+                  G
+                </div>
+
+                <div className='min-w-0'>
+                  <p className='truncate text-sm font-medium text-white'>
+                    Guest
+                  </p>
+
+                  <p className='text-xs text-white/40'>
+                    Login to save chats
+                  </p>
+                </div>
+              </div>
+
+              <div className='mt-3 flex gap-2'>
+                <Link
+                  to='/login'
+                  className='flex-1 rounded-lg bg-white/10 px-3 py-2 text-center text-xs font-medium text-white transition hover:bg-white/15'
+                >
+                  Login
+                </Link>
+
+                <Link
+                  to='/register'
+                  className='flex-1 rounded-lg border border-white/10 px-3 py-2 text-center text-xs font-medium text-white/80 transition hover:bg-white/[0.06]'
+                >
+                  Sign up
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
       </aside>
@@ -189,26 +255,24 @@ const Dashboard = () => {
 
           </div>
 
-          <button
-            type='button'
-            className='flex h-9 w-9 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/[0.07] hover:text-white'
-          >
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='19'
-              height='19'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='1.7'
-              strokeLinecap='round'
-              strokeLinejoin='round'
+          {user ? (
+            <Link
+              to='/profile'
+              className='flex h-9 items-center gap-2 rounded-lg px-3 text-sm text-white/70 transition hover:bg-white/[0.07] hover:text-white'
             >
-              <circle cx='12' cy='12' r='1' />
-              <circle cx='19' cy='12' r='1' />
-              <circle cx='5' cy='12' r='1' />
-            </svg>
-          </button>
+              <span className='flex h-7 w-7 items-center justify-center rounded-full bg-[#31b8c6] text-xs font-bold text-zinc-950'>
+                {profileInitial}
+              </span>
+              <span className='hidden sm:inline'>Profile</span>
+            </Link>
+          ) : (
+            <Link
+              to='/login'
+              className='rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/[0.07] hover:text-white'
+            >
+              Login
+            </Link>
+          )}
 
         </header>
 
@@ -423,7 +487,7 @@ const Dashboard = () => {
 
               <button
                 type='submit'
-                disabled={!chatInput.trim() || isLoading}
+                disabled={!chatInput.trim() || isLoading || authLoading}
                 className='absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-white text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30'
               >
                 <svg

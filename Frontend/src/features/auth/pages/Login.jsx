@@ -51,7 +51,7 @@ const Login = () => {
     const success = await handleLogin(payload)
 
     if (success) {
-        navigate("/")
+        navigate("/", { replace: true })
     }
 
 }
