@@ -1,0 +1,12 @@
+{
+  "name": "perplexity-genai-karan",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm install --prefix Backend && npm run build:frontend --prefix Backend",
+    "start": "npm start --prefix Backend"
+  }
+}

@@ -3,8 +3,7 @@ services:
   - type: web
     name: perplexity
     runtime: node
-    rootDir: Backend
-    buildCommand: npm install && npm run build:frontend
+    buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
